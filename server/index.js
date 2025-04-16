@@ -48,6 +48,29 @@ const client = new MongoClient(uri, {
 })
 async function run() {
   try {
+    const db = client.db('plantNet-session')
+    const usersCollection = db.collection('users')
+    const plantsCollection = db.collection('plants')
+
+    // save or  update user in db 
+    app.post('/users/:email',async(req,res)=>{
+      const email = req.params.email
+      const query = {email}
+      const user = req.body
+      // check if user exists in db
+      const isExist = await usersCollection.findOne(query)
+      if(isExist){
+        return res.send(isExist)
+      }
+
+      const result = await usersCollection.insertOne({...user,
+        role:'customer',
+        timestamp: Date.now(),
+      })
+      res.send(result)
+
+    })
+
     // Generate jwt token
     app.post('/jwt', async (req, res) => {
       const email = req.body
@@ -76,6 +99,14 @@ async function run() {
         res.status(500).send(err)
       }
     })
+
+    // save a plant data in db 
+    app.post("/plants",async(req,res)=>{
+      const plant = req.body;
+      const result = await plantsCollection.insertOne(plant)
+      res.send(result)
+    })
+
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 })
