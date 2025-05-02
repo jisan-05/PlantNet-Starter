@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { TbFidgetSpinner } from "react-icons/tb";
 
 // eslint-disable-next-line react/prop-types
@@ -112,7 +113,7 @@ const AddPlantForm = ({
                                         <input
                                             onChange={(e) => {
                                                 setUploadImage({
-                                                    image:e.target.files[0],
+                                                    image: e.target.files[0],
                                                     url: URL.createObjectURL(
                                                         e.target.files[0]
                                                     ),
