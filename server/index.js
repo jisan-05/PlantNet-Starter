@@ -114,20 +114,73 @@ async function run() {
             res.send(result);
         });
 
-        // get a plant by id 
-        app.get('/plants/:id', async(req,res)=>{
-          const id = req.params.id;
-          const query = {_id: new ObjectId(id)}
-          const result = await plantsCollection.findOne(query)
-          res.send(result)
-        })
-        // save order data in db 
+        // get a plant by id
+        app.get("/plants/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await plantsCollection.findOne(query);
+            res.send(result);
+        });
+        // save order data in db
         app.post("/order", async (req, res) => {
             const orderInfo = req.body;
             const result = await ordersCollection.insertOne(orderInfo);
             res.send(result);
         });
 
+        //manage order collection
+        app.patch("/plants/quantity/:id", verifyToken, async (req, res) => {
+            const id = req.params.id;
+            const { quantityToUpdate } = req.body;
+            const filter = { _id: new ObjectId(id) };
+            let updateDoc = {
+                $inc: { quantity: -quantityToUpdate },
+            };
+            const result = await plantsCollection.updateOne(filter, updateDoc);
+            res.send(result);
+        });
+
+        // get all orders for a specific customer
+        app.get("/customer-orders/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const query = {'customer.email':email};
+            const result = await ordersCollection.aggregate([
+                {
+                    $match:query  // match specific customer data only by email
+                },
+                {
+                    $addFields:{
+                        plantId:{$toObjectId: '$plantId'} // convert plantId string field to ObjectId field
+                    }
+                },
+                {
+                    $lookup:{             // go to different collection and look for data
+                        from:'plants',      // collection name
+                        localField:'plantId',   // local data that you want to match 
+                        foreignField: '_id',      // foreign field name to that same data
+                        as: 'plants'          // return the data as plants array {array naming}
+                    }
+                },
+                {
+                    $unwind: '$plants'      // unwind lookup result , return without array
+                },
+                {
+                   $addFields:{
+                        // add this fields in the order object 
+                    name:'$plants.name',
+                    image:'$plants.image',
+                    category:'$plants.category'
+                   } 
+                },
+                {   
+                    // remove plants object property from order object
+                    $project:{
+                        plants:0
+                    }
+                }
+            ]).toArray()
+            res.send(result)
+        });
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
