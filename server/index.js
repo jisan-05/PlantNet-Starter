@@ -131,11 +131,16 @@ async function run() {
         //manage order collection
         app.patch("/plants/quantity/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
-            const { quantityToUpdate } = req.body;
+            const { quantityToUpdate, status } = req.body;
             const filter = { _id: new ObjectId(id) };
             let updateDoc = {
                 $inc: { quantity: -quantityToUpdate },
             };
+            if (status === "increase") {
+                updateDoc = {
+                    $inc: { quantity: quantityToUpdate },
+                };
+            }
             const result = await plantsCollection.updateOne(filter, updateDoc);
             res.send(result);
         });
@@ -143,43 +148,59 @@ async function run() {
         // get all orders for a specific customer
         app.get("/customer-orders/:email", verifyToken, async (req, res) => {
             const email = req.params.email;
-            const query = {'customer.email':email};
-            const result = await ordersCollection.aggregate([
-                {
-                    $match:query  // match specific customer data only by email
-                },
-                {
-                    $addFields:{
-                        plantId:{$toObjectId: '$plantId'} // convert plantId string field to ObjectId field
-                    }
-                },
-                {
-                    $lookup:{             // go to different collection and look for data
-                        from:'plants',      // collection name
-                        localField:'plantId',   // local data that you want to match 
-                        foreignField: '_id',      // foreign field name to that same data
-                        as: 'plants'          // return the data as plants array {array naming}
-                    }
-                },
-                {
-                    $unwind: '$plants'      // unwind lookup result , return without array
-                },
-                {
-                   $addFields:{
-                        // add this fields in the order object 
-                    name:'$plants.name',
-                    image:'$plants.image',
-                    category:'$plants.category'
-                   } 
-                },
-                {   
-                    // remove plants object property from order object
-                    $project:{
-                        plants:0
-                    }
-                }
-            ]).toArray()
-            res.send(result)
+            const query = { "customer.email": email };
+            const result = await ordersCollection
+                .aggregate([
+                    {
+                        $match: query, // match specific customer data only by email
+                    },
+                    {
+                        $addFields: {
+                            plantId: { $toObjectId: "$plantId" }, // convert plantId string field to ObjectId field
+                        },
+                    },
+                    {
+                        $lookup: {
+                            // go to different collection and look for data
+                            from: "plants", // collection name
+                            localField: "plantId", // local data that you want to match
+                            foreignField: "_id", // foreign field name to that same data
+                            as: "plants", // return the data as plants array {array naming}
+                        },
+                    },
+                    {
+                        $unwind: "$plants", // unwind lookup result , return without array
+                    },
+                    {
+                        $addFields: {
+                            // add this fields in the order object
+                            name: "$plants.name",
+                            image: "$plants.image",
+                            category: "$plants.category",
+                        },
+                    },
+                    {
+                        // remove plants object property from order object
+                        $project: {
+                            plants: 0,
+                        },
+                    },
+                ])
+                .toArray();
+            res.send(result);
+        });
+
+        // cancel/delete an order
+        app.delete("/orders/:id", verifyToken, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const order = await ordersCollection.findOne(query);
+            if (order.status === "delivered")
+                return res
+                    .status(409)
+                    .send("can not cancel once the product is delivered!");
+            const result = await ordersCollection.deleteOne(query);
+            res.send(result);
         });
 
         // Send a ping to confirm a successful connection
