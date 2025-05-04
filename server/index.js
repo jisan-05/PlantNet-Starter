@@ -72,6 +72,21 @@ async function run() {
             res.send(result);
         });
 
+        // manage user status
+        app.patch('/users/:email',verifyToken,async(req,res)=>{
+            const email = req.params.email
+            const query =  {email}
+            const user = await usersCollection.findOne(query)
+            if(!user || user?.status === 'Requested') return res.status(400).send('You Have Already Requested, wait for some time')
+            const updateDoc = {
+                $set:{
+                    status: 'Requested'
+                }
+            }
+            const result = await usersCollection.updateOne(query,updateDoc)
+            res.send(result)
+        })
+
         // Generate jwt token
         app.post("/jwt", async (req, res) => {
             const email = req.body;
@@ -195,7 +210,7 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const order = await ordersCollection.findOne(query);
-            if (order.status === "delivered")
+            if (order.status === "Delivered")
                 return res
                     .status(409)
                     .send("can not cancel once the product is delivered!");
