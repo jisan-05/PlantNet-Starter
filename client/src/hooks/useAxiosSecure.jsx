@@ -3,7 +3,7 @@ import useAuth from "./useAuth";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
- const axiosSecure = axios.create({
+const axiosSecure = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
     withCredentials: true,
 });
@@ -38,4 +38,3 @@ const useAxiosSecure = () => {
 };
 
 export default useAxiosSecure;
-
