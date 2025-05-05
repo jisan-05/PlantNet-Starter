@@ -53,6 +53,31 @@ async function run() {
         const plantsCollection = db.collection("plants");
         const ordersCollection = db.collection("orders");
 
+        // verify admin middleware
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.user?.email;
+            const query = { email };
+            const result = await usersCollection.findOne(query);
+            if (!result || result?.role !== "admin")
+                return res
+                    .status(403)
+                    .send({ message: "forbidden access ! admin only action" });
+
+            next();
+        };
+        // verify Seller middleware
+        const verifySeller = async (req, res, next) => {
+            const email = req.user?.email;
+            const query = { email };
+            const result = await usersCollection.findOne(query);
+            if (!result || result?.role !== "seller")
+                return res
+                    .status(403)
+                    .send({ message: "forbidden access ! Seller only action" });
+
+            next();
+        };
+
         // save or  update user in db
         app.post("/users/:email", async (req, res) => {
             const email = req.params.email;
@@ -90,25 +115,31 @@ async function run() {
             res.send(result);
         });
         // get all user data
-        app.get("/all-users/:email", verifyToken, async (req, res) => {
-            const email = req.params.email;
-            const query = { email: { $ne: email } };
-            const result = await usersCollection.find(query).toArray();
-            res.send(result);
-        });
+        app.get(
+            "/all-users/:email",
+            verifyToken,
+            verifyAdmin,
+            async (req, res) => {
+                const email = req.params.email;
+                const query = { email: { $ne: email } };
+                const result = await usersCollection.find(query).toArray();
+                res.send(result);
+            }
+        );
 
         // update a user role & status
         app.patch("/user/role/:email", verifyToken, async (req, res) => {
             const email = req.params.email;
-            const {role} = req.body;
-            const filter = {email}
+            const { role } = req.body;
+            const filter = { email };
             const updateDoc = {
-                $set:{
-                    role,status:'Verified'
-                }
-            }
-            const result = await usersCollection.updateOne(filter,updateDoc)
-            res.send(result)
+                $set: {
+                    role,
+                    status: "Verified",
+                },
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            res.send(result);
         });
 
         // get user role
@@ -149,7 +180,7 @@ async function run() {
         });
 
         // save a plant data in db
-        app.post("/plants", async (req, res) => {
+        app.post("/plants",verifyToken,verifySeller, async (req, res) => {
             const plant = req.body;
             const result = await plantsCollection.insertOne(plant);
             res.send(result);
