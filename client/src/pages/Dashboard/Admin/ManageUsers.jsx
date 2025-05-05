@@ -3,17 +3,19 @@ import UserDataRow from "../../../components/Dashboard/TableRows/UserDataRow";
 import { useQuery } from "@tanstack/react-query";
 import useAxiosSecure from "../../../hooks/useAxiosSecure";
 import useAuth from "../../../hooks/useAuth";
+import LoadingSpinner from "../../../components/Shared/LoadingSpinner";
 
 const ManageUsers = () => {
     const {user} = useAuth()
     const axiosSecure = useAxiosSecure()
-    const {data: users = [], isLoading} = useQuery({
+    const {data: users = [], isLoading, refetch} = useQuery({
         queryKey: ["users",user?.emil],
         queryFn: async()=>{
           const {data} = await axiosSecure.get(`/all-users/${user?.email}`)
           return data;
         }
     });
+    if(isLoading) return <LoadingSpinner></LoadingSpinner>
     console.log(users)
     return (
         <>
@@ -55,7 +57,7 @@ const ManageUsers = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {users.map(userData=><UserDataRow key={userData._id} userData={userData}/>)}
+                                    {users.map(userData=><UserDataRow refetch={refetch} key={userData._id} userData={userData}/>)}
                                     
                                 </tbody>
                             </table>

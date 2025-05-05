@@ -73,35 +73,51 @@ async function run() {
         });
 
         // manage user status
-        app.patch('/users/:email',verifyToken,async(req,res)=>{
-            const email = req.params.email
-            const query =  {email}
-            const user = await usersCollection.findOne(query)
-            if(!user || user?.status === 'Requested') return res.status(400).send('You Have Already Requested, wait for some time')
+        app.patch("/users/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            if (!user || user?.status === "Requested")
+                return res
+                    .status(400)
+                    .send("You Have Already Requested, wait for some time");
+            const updateDoc = {
+                $set: {
+                    status: "Requested",
+                },
+            };
+            const result = await usersCollection.updateOne(query, updateDoc);
+            res.send(result);
+        });
+        // get all user data
+        app.get("/all-users/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: { $ne: email } };
+            const result = await usersCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        // update a user role & status
+        app.patch("/user/role/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const {role} = req.body;
+            const filter = {email}
             const updateDoc = {
                 $set:{
-                    status: 'Requested'
+                    role,status:'Verified'
                 }
             }
-            const result = await usersCollection.updateOne(query,updateDoc)
+            const result = await usersCollection.updateOne(filter,updateDoc)
             res.send(result)
-        })
-        // get all user data 
-        app.get('/all-users/:email',verifyToken,async(req,res)=>{
-            const email = req.params.email
-            const query = {email:{$ne: email}}
-            const result = await usersCollection.find(query).toArray()
-            res.send(result)
-
-        })
+        });
 
         // get user role
-        app.get('/user/role/:email',async(req,res)=>{
-            const email = req.params.email
-            const query = {email:email}
-            const result = await usersCollection.findOne(query) 
-            res.send({role: result?.role})
-        })
+        app.get("/users/role/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await usersCollection.findOne(query);
+            res.send({ role: result?.role });
+        });
 
         // Generate jwt token
         app.post("/jwt", async (req, res) => {
