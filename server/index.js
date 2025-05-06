@@ -128,7 +128,7 @@ async function run() {
         );
 
         // update a user role & status
-        app.patch("/user/role/:email", verifyToken, async (req, res) => {
+        app.patch("/user/role/:email", verifyToken,verifyAdmin, async (req, res) => {
             const email = req.params.email;
             const { role } = req.body;
             const filter = { email };
@@ -142,13 +142,34 @@ async function run() {
             res.send(result);
         });
 
-        // get user role
+         // get inventory data for seller
+         app.get("/plants/seller",verifyToken,verifySeller, async (req, res) => {
+            const email = req.user.email;
+            const query = { 'seller.email': email };
+            const result = await plantsCollection.find(query).toArray()
+            res.send(result);
+        });
+
+        // get inventory data for seller
         app.get("/users/role/:email", async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const result = await usersCollection.findOne(query);
             res.send({ role: result?.role });
         });
+
+         // get all user data
+         app.get(
+            "/all-users/:email",
+            verifyToken,
+            verifyAdmin,
+            async (req, res) => {
+                const email = req.params.email;
+                const query = { email: { $ne: email } };
+                const result = await usersCollection.find(query).toArray();
+                res.send(result);
+            }
+        );
 
         // Generate jwt token
         app.post("/jwt", async (req, res) => {

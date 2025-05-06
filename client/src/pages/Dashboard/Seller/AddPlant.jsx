@@ -5,6 +5,7 @@ import useAuth from "../../../hooks/useAuth";
 import { useState } from "react";
 import useAxiosSecure from "../../../hooks/useAxiosSecure";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const AddPlant = () => {
     const { user } = useAuth();
@@ -14,6 +15,7 @@ const AddPlant = () => {
     });
     const [loading,setLoading] = useState(false)
     // handle form submit
+    const navigate = useNavigate()
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -50,6 +52,7 @@ const AddPlant = () => {
           // post req
            await axiosSecure.post('/plants',plantData)
            toast.success('Data Added Successfully')
+           navigate('/dashboard/my-inventory')
         }
         catch(err){
           console.log(err)
