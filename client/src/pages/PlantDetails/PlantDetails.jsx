@@ -8,8 +8,12 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import LoadingSpinner from "../../components/Shared/LoadingSpinner";
+import useRole from "./../../hooks/useRole";
+import useAuth from "../../hooks/useAuth";
 
 const PlantDetails = () => {
+    const [role] = useRole();
+    const { user } = useAuth();
     let [isOpen, setIsOpen] = useState(false);
     const { id } = useParams();
     const {
@@ -22,6 +26,7 @@ const PlantDetails = () => {
             const { data } = await axios.get(
                 `${import.meta.env.VITE_API_URL}/plants/${id}`
             );
+
             return data;
         },
     });
@@ -105,7 +110,13 @@ const PlantDetails = () => {
                         </p>
                         <div>
                             <Button
-                                onClick={()=> setIsOpen(true)}
+                                disabled={
+                                    !user ||
+                                    user?.email === seller?.email ||
+                                    role !== "customer" ||
+                                    quantity === 0
+                                }
+                                onClick={() => setIsOpen(true)}
                                 label={
                                     quantity > 0 ? "Purchase" : "Out Of Stock"
                                 }
@@ -114,7 +125,12 @@ const PlantDetails = () => {
                     </div>
                     <hr className="my-6" />
 
-                    <PurchaseModal refetch={refetch} plant={plant} closeModal={closeModal} isOpen={isOpen} />
+                    <PurchaseModal
+                        refetch={refetch}
+                        plant={plant}
+                        closeModal={closeModal}
+                        isOpen={isOpen}
+                    />
                 </div>
             </div>
         </Container>
