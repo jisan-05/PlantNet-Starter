@@ -39,9 +39,6 @@ const verifyToken = async (req, res, next) => {
 
 // send email using nodemailer
 const sendEmail = (emailAddress, emailData) => {
-
-    
-
     // create transporter
     const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
@@ -52,31 +49,31 @@ const sendEmail = (emailAddress, emailData) => {
             pass: process.env.NODEMAILER_PASS,
         },
     });
-    // verify connection 
-    transporter.verify((error,success)=>{
-        if(error){
-            console.log(error)
-        }else{
-            console.log("transporter is ready for send email ",success)
+    // verify connection
+    transporter.verify((error, success) => {
+        if (error) {
+            console.log(error);
+        } else {
+            console.log("transporter is ready for send email ", success);
         }
-    })
+    });
     // transporter.sendMail()
     const mailBody = {
         from: process.env.NODEMAILER_USER,
         to: emailAddress,
         subject: emailData?.subject,
         html: `<p>${emailData?.message}</p>`, // HTML body
-      }
+    };
 
-    // send email 
-    transporter.sendMail(mailBody, (error,info)=>{
-        if(error){
-            console.log(error)
-        }else{
+    // send email
+    transporter.sendMail(mailBody, (error, info) => {
+        if (error) {
+            console.log(error);
+        } else {
             // console.log(info)
-            console.log("email send:",info?.response)
+            console.log("email send:", info?.response);
         }
-    })
+    });
 };
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.pmlso.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -123,7 +120,7 @@ async function run() {
 
         // save or  update user in db
         app.post("/users/:email", async (req, res) => {
-            sendEmail()
+            sendEmail();
             const email = req.params.email;
             const query = { email };
             const user = req.body;
@@ -158,18 +155,6 @@ async function run() {
             const result = await usersCollection.updateOne(query, updateDoc);
             res.send(result);
         });
-        // get all user data
-        app.get(
-            "/all-users/:email",
-            verifyToken,
-            verifyAdmin,
-            async (req, res) => {
-                const email = req.params.email;
-                const query = { email: { $ne: email } };
-                const result = await usersCollection.find(query).toArray();
-                res.send(result);
-            }
-        );
 
         // update a user role & status
         app.patch(
@@ -294,18 +279,18 @@ async function run() {
         app.post("/order", async (req, res) => {
             const orderInfo = req.body;
             const result = await ordersCollection.insertOne(orderInfo);
-            // send email 
-            if(result?.insertedId){
-                // To Customer  
-                sendEmail(orderInfo?.customer?.email,{
-                    subject:"Order Successful",
-                    message:`You've place an order successfully. Transaction Id : ${result?.insertedId}`
-                })
-                // To Seller  
-                sendEmail(orderInfo?.seller,{
-                    subject:"Hurray ! , you have an order to process ",
-                    message:`Get the plants ready for ${orderInfo?.customer?.name}`
-                })
+            // send email
+            if (result?.insertedId) {
+                // To Customer
+                sendEmail(orderInfo?.customer?.email, {
+                    subject: "Order Successful",
+                    message: `You've place an order successfully. Transaction Id : ${result?.insertedId}`,
+                });
+                // To Seller
+                sendEmail(orderInfo?.seller, {
+                    subject: "Hurray ! , you have an order to process ",
+                    message: `Get the plants ready for ${orderInfo?.customer?.name}`,
+                });
             }
             res.send(result);
         });
@@ -455,6 +440,36 @@ async function run() {
                     .send("can not cancel once the product is delivered!");
             const result = await ordersCollection.deleteOne(query);
             res.send(result);
+        });
+
+        // admin stat
+        app.get("/admin-stat", verifyToken, verifyAdmin, async (req, res) => {
+            const totalUser = await usersCollection.estimatedDocumentCount();
+            const totalPlants = await plantsCollection.estimatedDocumentCount();
+            const allOrder = await ordersCollection.find().toArray();
+            // const totalOrders = allOrder.length;
+            // const totalPrice = allOrder.reduce(
+            //     (sum, order) => sum + order.price,
+            //     0
+            // );
+
+            // get total revenue , total order 
+            const ordersDetails = await ordersCollection.aggregate([
+                {
+                    $group:{
+                        _id:null,
+                        totalRevenue:{$sum: "$price"},
+                        totalOrder:{$sum: 1}
+                    }
+                },
+                {
+                    $project:{
+                        _id:0
+                    },
+                }
+            ]).next()
+
+            res.send({ totalPlants, totalUser, ...ordersDetails });
         });
 
         // Send a ping to confirm a successful connection
