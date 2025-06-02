@@ -12,6 +12,9 @@ import useAuth from "../../hooks/useAuth";
 import { toast } from "react-hot-toast";
 import useAxiosSecure from "../../hooks/useAxiosSecure";
 import { Navigate, useNavigate } from "react-router-dom";
+import {CheckoutProvider, Elements} from '@stripe/react-stripe-js';
+import {loadStripe} from '@stripe/stripe-js';
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
 
 const PurchaseModal = ({ closeModal, isOpen, plant,refetch }) => {
     
@@ -189,6 +192,11 @@ const PurchaseModal = ({ closeModal, isOpen, plant,refetch }) => {
                                         required
                                     />
                                 </div>
+                                {/* Check Out form  */}
+                                <Elements stripe={stripePromise}>
+                                    {/* Form Components  */}
+                                    
+                                </Elements>
 
                                 <div className="mt-3">
                                     <Button
