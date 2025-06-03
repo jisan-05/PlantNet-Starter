@@ -14,6 +14,7 @@ import useAxiosSecure from "../../hooks/useAxiosSecure";
 import { Navigate, useNavigate } from "react-router-dom";
 import {CheckoutProvider, Elements} from '@stripe/react-stripe-js';
 import {loadStripe} from '@stripe/stripe-js';
+import CheckoutForm from "../Form/CheckoutForm";
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
 
 const PurchaseModal = ({ closeModal, isOpen, plant,refetch }) => {
@@ -195,15 +196,10 @@ const PurchaseModal = ({ closeModal, isOpen, plant,refetch }) => {
                                 {/* Check Out form  */}
                                 <Elements stripe={stripePromise}>
                                     {/* Form Components  */}
-                                    
+                                    <CheckoutForm closeModal={closeModal} purchaseInfo={purchaseInfo} refetch={refetch}></CheckoutForm>
                                 </Elements>
 
-                                <div className="mt-3">
-                                    <Button
-                                        onClick={handlePurchase}
-                                        label={`Pay                                                                                                         ${totalPrice} $`}
-                                    ></Button>
-                                </div>
+                                
                             </DialogPanel>
                         </TransitionChild>
                     </div>
