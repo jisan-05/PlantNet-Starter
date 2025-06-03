@@ -6,6 +6,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const morgan = require("morgan");
 const nodemailer = require("nodemailer");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
 const port = process.env.PORT || 9000;
 const app = express();
@@ -453,23 +454,85 @@ async function run() {
             //     0
             // );
 
-            // get total revenue , total order 
-            const ordersDetails = await ordersCollection.aggregate([
-                {
-                    $group:{
-                        _id:null,
-                        totalRevenue:{$sum: "$price"},
-                        totalOrder:{$sum: 1}
-                    }
-                },
-                {
-                    $project:{
-                        _id:0
-                    },
-                }
-            ]).next()
+            const myData = {
+                data: "11/01/2025",
+                quantity: 4000,
+                price: 5000,
+                order: 2000,
+            };
 
-            res.send({ totalPlants, totalUser, ...ordersDetails });
+            // generate chart data
+            const chartData = await ordersCollection
+                .aggregate([
+                    {
+                        $group: {
+                            _id: {
+                                $dateToString: {
+                                    format: "%Y-%m-%d",
+                                    date: { $toDate: "$_id" },
+                                },
+                            },
+                            quantity: {
+                                $sum: "$quantity",
+                            },
+                            price: {
+                                $sum: "$price",
+                            },
+                            order: { $sum: 1 },
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            date: "$_id",
+                            quantity: 1,
+                            order: 1,
+                            price: 1,
+                        },
+                    },
+                ])
+                .next();
+
+            // get total revenue , total order
+            const ordersDetails = await ordersCollection
+                .aggregate([
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: { $sum: "$price" },
+                            totalOrder: { $sum: 1 },
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                        },
+                    },
+                ])
+                .next();
+
+            res.send({ totalPlants, totalUser, ...ordersDetails, chartData });
+        });
+
+        // create payment intent
+        app.post("/create-payment-intent", verifyToken, async (req, res) => {
+            const { quantity, plantId } = req.body;
+            const plant = await plantsCollection.findOne({
+                _id: new ObjectId(plantId),
+            });
+            if (!plant) {
+                return res.status(400).send({ message: "plant not found" });
+            }
+            const totalPrice = quantity * plant.price * 100; // total price in cent ( poysa 🙂)
+
+            const {client_secret} = await stripe.paymentIntents.create({
+                amount: totalPrice,
+                currency: "usd",
+                automatic_payment_methods: {
+                    enabled: true,
+                },
+            });
+            res.send({clientSecret:client_secret})
         });
 
         // Send a ping to confirm a successful connection
