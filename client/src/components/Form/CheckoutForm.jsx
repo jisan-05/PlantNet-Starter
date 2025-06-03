@@ -5,30 +5,32 @@ import Button from "../Shared/Button/Button";
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 import useAxiosSecure from "../../hooks/useAxiosSecure";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
-const CheckoutForm = ({ closeModal, purchaseInfo, refetch }) => {
-    const axiosSecure = useAxiosSecure()
-    const [clientSecret,setClientSecret] = useState('')
+const CheckoutForm = ({ closeModal, purchaseInfo,totalQuantity, refetch }) => {
+    const axiosSecure = useAxiosSecure();
+    const [clientSecret, setClientSecret] = useState("");
+    const navigate = useNavigate()
 
-    useEffect(()=>{
-      getPaymentIntent()
-      
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[purchaseInfo])
+    useEffect(() => {
+        getPaymentIntent();
 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [purchaseInfo]);
 
-    const getPaymentIntent = async ()=>{
-        try{
-          const {data} =await axiosSecure.post('/create-payment-intent',{
-            quantity:purchaseInfo.quantity,
-            plantId:purchaseInfo.plantId,
-          })
-          setClientSecret(data.clientSecret)
-          console.log(clientSecret)
-        }catch(err){
-          console.log(err)
+    const getPaymentIntent = async () => {
+        try {
+            const { data } = await axiosSecure.post("/create-payment-intent", {
+                quantity: purchaseInfo.quantity,
+                plantId: purchaseInfo.plantId,
+            });
+            setClientSecret(data.clientSecret);
+            console.log(clientSecret);
+        } catch (err) {
+            console.log(err);
         }
-      }
+    };
 
     const stripe = useStripe();
     const elements = useElements();
@@ -62,6 +64,33 @@ const CheckoutForm = ({ closeModal, purchaseInfo, refetch }) => {
             console.log("[error]", error);
         } else {
             console.log("[PaymentMethod]", paymentMethod);
+        }
+        // stripe confirm
+        const {paymentIntent} = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: {
+                card: card,
+                billing_details: {
+                    name: purchaseInfo?.customer?.name,
+                    email:purchaseInfo?.customer?.email,
+                },
+            },
+        });
+        if(paymentIntent.status === "succeeded"){
+            try{
+            await axiosSecure.post('/order',{...purchaseInfo,transactionId:paymentIntent?.id})
+            // decrease quantity from the plant collection  
+            await axiosSecure.patch(`/plants/quantity/${purchaseInfo?.plantId}`,{
+                quantityToUpdate:totalQuantity,
+                status:'decrease'
+            })
+            refetch()
+            toast.success("Order Successful")
+            navigate('/dashboard/my-orders')
+        }catch(err){
+            console.log(err)
+        }finally{
+            closeModal()
+        }
         }
     };
 

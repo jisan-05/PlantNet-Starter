@@ -64,24 +64,7 @@ const PurchaseModal = ({ closeModal, isOpen, plant,refetch }) => {
     };
     const navigate = useNavigate()
 
-    const handlePurchase = async () => {
-        // do something
-        try{
-            await axiosSecure.post('/order',purchaseInfo)
-            // decrease quantity from the plant collection  
-            await axiosSecure.patch(`/plants/quantity/${_id}`,{
-                quantityToUpdate:totalQuantity,
-                status:'decrease'
-            })
-            refetch()
-            toast.success("Order Successful")
-            navigate('/dashboard/my-orders')
-        }catch(err){
-            console.log(err)
-        }finally{
-            closeModal()
-        }
-    };
+    
 
     return (
         <Transition appear show={isOpen} as={Fragment}>
@@ -196,7 +179,7 @@ const PurchaseModal = ({ closeModal, isOpen, plant,refetch }) => {
                                 {/* Check Out form  */}
                                 <Elements stripe={stripePromise}>
                                     {/* Form Components  */}
-                                    <CheckoutForm closeModal={closeModal} purchaseInfo={purchaseInfo} refetch={refetch}></CheckoutForm>
+                                    <CheckoutForm totalQuantity={totalQuantity} closeModal={closeModal} purchaseInfo={purchaseInfo} refetch={refetch}></CheckoutForm>
                                 </Elements>
 
                                 
